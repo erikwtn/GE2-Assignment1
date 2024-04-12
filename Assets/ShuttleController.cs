@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 
+// TODO: Path following steering behaviour for enemy ai
 public class SpaceshipController : MonoBehaviour
 {
     [SerializeField] private float rotateSpeed;
