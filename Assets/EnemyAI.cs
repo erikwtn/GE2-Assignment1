@@ -1,8 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
+// TODO: ADD OBSTACLE AVOIDANCE
 public class EnemyAI : MonoBehaviour
 {
     private Transform _player;
@@ -23,11 +25,11 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float loseSightCooldown = 3f; // Adjust as needed
     
     private float _loseSightTimer = 0f;
-    [SerializeField] private bool _plrInSearchRange;
-    [SerializeField] private bool _plrInRange;
-    [SerializeField] private bool _isAttackRange;
+    private bool _plrInSearchRange;
+    private bool _plrInRange;
+    private bool _isAttackRange;
     
-    [SerializeField] private enum States
+    private enum States
     {
         Patrol,
         Search,
@@ -35,7 +37,7 @@ public class EnemyAI : MonoBehaviour
         Attack
     }
 
-    [SerializeField] private States _states;
+    [SerializeField] private States states;
     
     private Vector3 _searchPoint;
     private bool _isSearching = false;
@@ -58,7 +60,7 @@ public class EnemyAI : MonoBehaviour
         StateTransition();
         UpdateTimers();
 
-        switch (_states)
+        switch (states)
         {
             case States.Search:
                 Searching();
@@ -116,12 +118,12 @@ public class EnemyAI : MonoBehaviour
     
     private void TransitionToState(States newState)
     {
-        _states = newState;
+        states = newState;
     }
     
     private void UpdateTimers()
     {
-        switch (_states)
+        switch (states)
         {
             // Update timers for search and chase states
             case States.Search when _searchTimer <= 0f:
