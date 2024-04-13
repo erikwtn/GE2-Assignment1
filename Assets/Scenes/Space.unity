@@ -148,7 +148,7 @@ Transform:
   m_GameObject: {fileID: 393469287}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -65.71, y: 12.308153, z: 43.9}
+  m_LocalPosition: {x: -105.609, y: 12.308153, z: 43.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -284,7 +284,7 @@ Transform:
   m_GameObject: {fileID: 697572785}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -65.71, y: 12.308153, z: -29.15}
+  m_LocalPosition: {x: -105.609, y: 12.308153, z: -29.15}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -420,7 +420,7 @@ Transform:
   m_GameObject: {fileID: 1166747458}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -65.71, y: -24.9, z: 43.9}
+  m_LocalPosition: {x: -105.609, y: -24.9, z: 43.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1002,12 +1002,18 @@ MonoBehaviour:
   - {fileID: 697572786}
   - {fileID: 393469288}
   - {fileID: 1166747459}
-  speed: 0
+  speed: 1
   stopDist: 3
   currentWaypoint: 0
-  searchRange: 3
-  chaseRange: 2
-  attackRange: 1
+  searchRange: 60
+  chaseRange: 40
+  attackRange: 20
+  wanderRadius: 10
+  loseSightCooldown: 3
+  _plrInSearchRange: 0
+  _plrInRange: 0
+  _isAttackRange: 0
+  _states: 0
 --- !u!135 &1945255230
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1088,7 +1094,7 @@ Transform:
   m_GameObject: {fileID: 1945255228}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -18.651, y: 12.031709, z: -7.106}
+  m_LocalPosition: {x: -58.55, y: 12.031709, z: -7.106}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

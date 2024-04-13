@@ -20,13 +20,14 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float chaseRange;
     [SerializeField] private float attackRange;
     [SerializeField] private float wanderRadius;
+    [SerializeField] private float loseSightCooldown = 3f; // Adjust as needed
     
-
-    private bool _plrInSearchRange;
-    private bool _plrInRange;
-    private bool _isAttackRange;
+    private float _loseSightTimer = 0f;
+    [SerializeField] private bool _plrInSearchRange;
+    [SerializeField] private bool _plrInRange;
+    [SerializeField] private bool _isAttackRange;
     
-    private enum States
+    [SerializeField] private enum States
     {
         Patrol,
         Search,
@@ -34,7 +35,14 @@ public class EnemyAI : MonoBehaviour
         Attack
     }
 
-    private States _states;
+    [SerializeField] private States _states;
+    
+    private Vector3 _searchPoint;
+    private bool _isSearching = false;
+    
+    private float _searchTimer = 0f;
+    private float _chaseTimer = 0f;
+
 
     private void Start()
     {
@@ -44,23 +52,11 @@ public class EnemyAI : MonoBehaviour
     private void FixedUpdate()
     {
         SearchRange();
+        ChaseRange();
+        AttackRange();
         
-        if (!_plrInSearchRange && !_plrInRange && !_plrInSearchRange && !_isAttackRange)
-        {
-            _states = States.Attack;
-        }
-        if (_plrInSearchRange && !_plrInRange && !_isAttackRange)
-        {
-            _states = States.Search;
-        }
-        if (_plrInRange && !_isAttackRange)
-        {
-            _states = States.Chase;
-        }
-        if (_isAttackRange)
-        {
-            _states = States.Attack;
-        }
+        StateTransition();
+        UpdateTimers();
 
         switch (_states)
         {
@@ -82,6 +78,61 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    private void StateTransition()
+    {
+        if (!_isAttackRange && !_plrInRange && !_plrInSearchRange)
+        {
+            TransitionToState(States.Patrol);
+        }
+        else if (_plrInSearchRange && !_plrInRange && !_isAttackRange)
+        {
+            if (_searchTimer <= 0f)
+            {
+                TransitionToState(States.Search);
+                _searchTimer = 0f;
+            }
+            else
+            {
+                _searchTimer -= Time.deltaTime;
+            }
+        }
+        else if (_plrInRange && !_isAttackRange)
+        {
+            if (_chaseTimer <= 0f)
+            {
+                TransitionToState(States.Chase);
+                _chaseTimer = 0f;
+            }
+            else
+            {
+                _chaseTimer -= Time.deltaTime; 
+            }
+        }
+        else if (_isAttackRange)
+        {
+            TransitionToState(States.Attack);
+        }
+    }
+    
+    private void TransitionToState(States newState)
+    {
+        _states = newState;
+    }
+    
+    private void UpdateTimers()
+    {
+        switch (_states)
+        {
+            // Update timers for search and chase states
+            case States.Search when _searchTimer <= 0f:
+                _searchTimer = loseSightCooldown;
+                break;
+            case States.Chase when _chaseTimer <= 0f:
+                _chaseTimer = loseSightCooldown;
+                break;
+        }
+    }
+
     private void SearchRange()
     {
         var dist = Vector3.Distance(transform.position, _player.position);
@@ -94,8 +145,49 @@ public class EnemyAI : MonoBehaviour
         _plrInRange = dist <= chaseRange;
     }
 
+    private void AttackRange()
+    {
+        var dist = Vector3.Distance(transform.position, _player.position);
+        _isAttackRange = dist <= attackRange;
+    }
+
     private void Searching()
     {
+        if (!_isSearching)
+        {
+            _searchPoint = RandomPoint();
+            _isSearching = true;
+        }
+    
+        var distanceToSearchPoint = Vector3.Distance(transform.position, _searchPoint);
+        
+        if (distanceToSearchPoint <= stopDist)
+        {
+            _isSearching = false;
+        }
+        else
+        {
+            transform.position = Vector3.Lerp(transform.position, _searchPoint, speed * Time.deltaTime);
+        }
+    }
+
+    private Vector3 RandomPoint()
+    {
+        var randomPoint = Vector3.zero;
+        var maxDistance = 30f;
+
+        foreach (var waypoint in waypoints)
+        {
+            var distance = Vector3.Distance(transform.position, waypoint.position);
+            if (distance > maxDistance)
+            {
+                maxDistance = distance;
+                randomPoint = waypoint.position;
+            }
+        }
+    
+        randomPoint += Random.insideUnitSphere * wanderRadius;
+        return randomPoint;
     }
 
     private void Patrolling()
@@ -115,12 +207,15 @@ public class EnemyAI : MonoBehaviour
             currentWaypoint = 0;
         }
     }
-
+    
     private void Chasing()
     {
-        var randomDirection = Random.Range(0f, 360f);
-        var randomPoint = RandomPoint(_player.position, wanderRadius, randomDirection);
-        transform.position = Vector3.Lerp(transform.position, randomPoint, speed * Time.deltaTime);
+        var direction = (_player.position - transform.position).normalized;
+        var targetPoint = _player.position - direction * (wanderRadius * 0.9f);
+        var distanceToTarget = Vector3.Distance(transform.position, targetPoint);
+        var interpolationFactor = Mathf.Clamp01(distanceToTarget / wanderRadius);
+        var adjustedSpeed = speed * interpolationFactor;
+        transform.position = Vector3.Lerp(transform.position, targetPoint, adjustedSpeed * Time.deltaTime);
     }
     
     private Vector3 RandomPoint(Vector3 center, float radius, float angle)
@@ -132,7 +227,26 @@ public class EnemyAI : MonoBehaviour
 
     private void Attacking()
     {
-        
+        if (!_isAttackRange)
+        {
+            if (SightTimer())
+            {
+                
+            }
+        }
+    }
+
+    private bool SightTimer()
+    {
+            if (_loseSightTimer > 0f)
+            {
+                _loseSightTimer -= Time.deltaTime;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
     }
 
     private void OnDrawGizmos()

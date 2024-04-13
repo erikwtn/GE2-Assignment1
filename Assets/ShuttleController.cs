@@ -17,53 +17,60 @@ public class SpaceshipController : MonoBehaviour
     private InputAction _upDownAction;
     private InputAction _horizontalAction;
     private InputAction _verticalAction;
+    private InputAction _leftGripAction;
+    private InputAction _rightGripAction;
     private InputAction _fireAction;
 
     private void Start()
     {
-        // ref
         _rollAction = new InputAction(binding: "<XRController>/roll");
         _upDownAction = new InputAction(binding: "<XRController>/primary2DAxis/y");
         _horizontalAction = new InputAction(binding: "<XRController>/primary2DAxis/x");
-        _verticalAction = new InputAction(binding: "<XRController>/trigger");
-        _fireAction = new InputAction(binding: "<XRController>/triggerButton");
+        //_verticalAction = new InputAction(binding: "<XRController>/trigger");
+        _leftGripAction = new InputAction(binding: "<XRController>/gripButton");
+        _rightGripAction = new InputAction(binding: "<XRController>/secondaryButton");
+        _fireAction = new InputAction(binding: "<XRController/triggerButton>");
         
-        // Enable inpout actions
         _rollAction.Enable();
         _upDownAction.Enable();
         _horizontalAction.Enable();
-        _verticalAction.Enable();
+        //_verticalAction.Enable();
+        _leftGripAction.Enable();
+        _rightGripAction.Enable();
         _fireAction.Enable();
     }
 
     private void FixedUpdate()
     {
-        // get valyes for input
         var rollInput = _rollAction.ReadValue<float>();
         var upDownInput = _upDownAction.ReadValue<float>();
         var horizontalInput = _horizontalAction.ReadValue<float>();
-        var verticalInput = _verticalAction.ReadValue<float>();
-
-        // rotate and translate when input
+        //var verticalInput = _verticalAction.ReadValue<float>();
+        var leftGripInput = _leftGripAction.ReadValue<float>();
+        var rightGripInput = _rightGripAction.ReadValue<float>();
+        var fireInput = _fireAction.ReadValue<float>();
+        
         transform.Rotate(new Vector3(0, 0, -1) * (rotateSpeed * rollInput * Time.deltaTime));
         transform.Rotate(new Vector3(1, 0, 0) * (downAndUpSpeed * upDownInput * Time.deltaTime));
         transform.Rotate(new Vector3(0, 1, 0) * (turnSpeed * horizontalInput * Time.deltaTime));
-        transform.Translate(Vector3.forward * (speed * verticalInput * Time.deltaTime));
 
-        if (_fireAction.triggered)
+        var moveInput = leftGripInput - rightGripInput;
+        transform.Translate(Vector3.forward * (speed * moveInput * Time.deltaTime));
+
+        if (fireInput > 0)
         {
-            // accelerate spaceship
-            transform.position += cam.transform.forward * (moveSpeed * Time.deltaTime);
+            Debug.Log("Attack made");
         }
     }
 
     private void OnDisable()
     {
-        // disable actions
         _rollAction.Disable();
         _upDownAction.Disable();
         _horizontalAction.Disable();
-        _verticalAction.Disable();
+        //_verticalAction.Disable();
+        _leftGripAction.Disable();
+        _rightGripAction.Disable();
         _fireAction.Disable();
     }
 }
