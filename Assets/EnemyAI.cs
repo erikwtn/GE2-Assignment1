@@ -5,6 +5,7 @@ using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
 // TODO: ADD OBSTACLE AVOIDANCE
+// TODO: ADD STRAFE STATE DURING ATTACKING (ROTATE AROUND PLAYER MAYBE)
 public class EnemyAI : MonoBehaviour
 {
     private Transform _player;

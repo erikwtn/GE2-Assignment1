@@ -5,12 +5,20 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class SpaceshipController : MonoBehaviour
 {
+    [Header("Stats")]
     [SerializeField] private float rotateSpeed;
     [SerializeField] private float turnSpeed;
     [SerializeField] private float downAndUpSpeed;
     [SerializeField] private float speed;
-    [SerializeField] private float moveSpeed;
+    [SerializeField] private float maxViewDist;
+    
+    [Header("Combat")]
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Transform bulletOrigin;
+    [SerializeField] private Transform bulletParent;
+    
     [SerializeField] private Camera cam;
+    private LayerMask _enemyLayer;
 
     private InputAction _rollAction;
     private InputAction _upDownAction;
@@ -25,15 +33,13 @@ public class SpaceshipController : MonoBehaviour
         _rollAction = new InputAction(binding: "<XRController>/roll");
         _upDownAction = new InputAction(binding: "<XRController>/primary2DAxis/y");
         _horizontalAction = new InputAction(binding: "<XRController>/primary2DAxis/x");
-        //_verticalAction = new InputAction(binding: "<XRController>/trigger");
         _leftGripAction = new InputAction(binding: "<XRController>/gripButton");
         _rightGripAction = new InputAction(binding: "<XRController>/secondaryButton");
-        _fireAction = new InputAction(binding: "<XRController/triggerButton>");
+        _fireAction = new InputAction(binding: "<XRController>/triggerButton");
         
         _rollAction.Enable();
         _upDownAction.Enable();
         _horizontalAction.Enable();
-        //_verticalAction.Enable();
         _leftGripAction.Enable();
         _rightGripAction.Enable();
         _fireAction.Enable();
@@ -44,7 +50,6 @@ public class SpaceshipController : MonoBehaviour
         var rollInput = _rollAction.ReadValue<float>();
         var upDownInput = _upDownAction.ReadValue<float>();
         var horizontalInput = _horizontalAction.ReadValue<float>();
-        //var verticalInput = _verticalAction.ReadValue<float>();
         var leftGripInput = _leftGripAction.ReadValue<float>();
         var rightGripInput = _rightGripAction.ReadValue<float>();
         var fireInput = _fireAction.ReadValue<float>();
@@ -58,8 +63,38 @@ public class SpaceshipController : MonoBehaviour
 
         if (fireInput > 0)
         {
-            Debug.Log("Attack made");
+            Debug.Log("Fired");
+            var target = FindNearestEnemy();
+            
+            var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, transform.rotation, bulletParent);
+            var bullet = newBullet.GetComponent<Bullet>();
+            if (bullet != null)
+            {
+                bullet.GetTarget(target.transform);
+            }
         }
+    }
+
+    private EnemyAI FindNearestEnemy()
+    {
+        _enemyLayer = LayerMask.GetMask("Enemy");
+        var colliders = Physics.OverlapSphere(transform.position, maxViewDist, _enemyLayer);
+        EnemyAI enemyAI = null;
+        var nearestDist = Mathf.Infinity;
+        
+        foreach (var c in colliders)
+        {
+            var dir = c.transform.position - transform.position;
+
+            if (!(Vector3.Dot(transform.forward, dir.normalized) > 0)) continue;
+            var dist = Vector3.Distance(transform.position, c.transform.position);
+
+            if (!(dist < nearestDist)) continue;
+            enemyAI = c.GetComponent<EnemyAI>();
+            nearestDist = dist;
+        }
+
+        return enemyAI;
     }
 
     private void OnDisable()
@@ -67,9 +102,14 @@ public class SpaceshipController : MonoBehaviour
         _rollAction.Disable();
         _upDownAction.Disable();
         _horizontalAction.Disable();
-        //_verticalAction.Disable();
         _leftGripAction.Disable();
         _rightGripAction.Disable();
         _fireAction.Disable();
+    }
+    
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.white;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * maxViewDist);
     }
 }
