@@ -16,6 +16,7 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float speed;
     [SerializeField] private float stopDist;
     [SerializeField] private int currentWaypoint;
+    [SerializeField] private float rotateSpeed;
     
 
     [Header("Tracking")] 
@@ -23,7 +24,13 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float chaseRange;
     [SerializeField] private float attackRange;
     [SerializeField] private float wanderRadius;
-    [SerializeField] private float loseSightCooldown = 3f; // Adjust as needed
+    [SerializeField] private float loseSightCooldown = 3f;
+    
+    [Header("Combat")]
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Transform bulletOrigin;
+    [SerializeField] private Transform bulletParent;
+    [SerializeField] private float fireCooldown = 0.5f;
     
     private float _loseSightTimer = 0f;
     private bool _plrInSearchRange;
@@ -214,6 +221,8 @@ public class EnemyAI : MonoBehaviour
     private void Chasing()
     {
         var direction = (_player.position - transform.position).normalized;
+        var lookRotation = Quaternion.LookRotation(direction);
+        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * rotateSpeed);
         var targetPoint = _player.position - direction * (wanderRadius * 0.9f);
         var distanceToTarget = Vector3.Distance(transform.position, targetPoint);
         var interpolationFactor = Mathf.Clamp01(distanceToTarget / wanderRadius);
@@ -232,10 +241,33 @@ public class EnemyAI : MonoBehaviour
     {
         if (!_isAttackRange)
         {
+            // If player is out of range, start the sight timer
             if (SightTimer())
             {
-                
+                // Rotate towards the player
+                var direction = (_player.position - transform.position).normalized;
+                var rotation = Quaternion.LookRotation(direction);
+                transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * rotateSpeed);
             }
+            else
+            {
+                TransitionToState(States.Chase);
+            }
+        }
+        else
+        {
+            Fire();
+        }
+    }
+    
+    private void Fire()
+    {
+        var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, Quaternion.identity, bulletParent);
+        var bullet = newBullet.GetComponent<Bullet>();
+
+        if (bullet != null)
+        {
+            bullet.GetTarget(_player);
         }
     }
 

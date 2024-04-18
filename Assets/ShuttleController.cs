@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -16,6 +18,9 @@ public class SpaceshipController : MonoBehaviour
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform bulletOrigin;
     [SerializeField] private Transform bulletParent;
+    [SerializeField] private float fireCooldown = 0.5f;
+
+    private bool _canFire = true;
     
     [SerializeField] private Camera cam;
     private LayerMask _enemyLayer;
@@ -61,17 +66,9 @@ public class SpaceshipController : MonoBehaviour
         var moveInput = leftGripInput - rightGripInput;
         transform.Translate(Vector3.forward * (speed * moveInput * Time.deltaTime));
 
-        if (fireInput > 0)
+        if (fireInput > 0 && _canFire)
         {
-            Debug.Log("Fired");
-            var target = FindNearestEnemy();
-            
-            var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, transform.rotation, bulletParent);
-            var bullet = newBullet.GetComponent<Bullet>();
-            if (bullet != null)
-            {
-                bullet.GetTarget(target.transform);
-            }
+            StartCoroutine(Fire());
         }
     }
 
@@ -95,6 +92,23 @@ public class SpaceshipController : MonoBehaviour
         }
 
         return enemyAI;
+    }
+    
+    private IEnumerator Fire()
+    {
+        _canFire = false;
+        
+        var target = FindNearestEnemy();
+        var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, transform.rotation, bulletParent);
+        var bullet = newBullet.GetComponent<Bullet>();
+        
+        if (bullet != null)
+        {
+            bullet.GetTarget(target != null ? target.transform : null);
+        }
+
+        yield return new WaitForSecondsRealtime(fireCooldown);
+        _canFire = true;
     }
 
     private void OnDisable()
