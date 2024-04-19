@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Anchor
   - Enemy
+  - Ground
   layers:
   - Default
   - TransparentFX
