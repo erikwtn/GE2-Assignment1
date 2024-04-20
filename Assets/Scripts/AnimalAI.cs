@@ -4,11 +4,10 @@ using System.Linq;
 using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
-// TODO: ADD HUNGER METER, FOR INTERFACE TO CHANGE VARIABLES
-// TODO: ADD FEAR METER, VICIOUSNESS METER, GOOFINESS (bouncing, rolling), airtime, social?
 public class AnimalAI : MonoBehaviour
 {
     private Transform _player;
+    private Vector3 _targetPos;
     
     [SerializeField] private List<Transform> waypoints;
     
@@ -20,31 +19,32 @@ public class AnimalAI : MonoBehaviour
     private bool _isGrounded;
 
     [Header("Stats")]
-    [SerializeField] private float speed;
+    [SerializeField] private float walkSpeed;
+    [SerializeField] private float runSpeed;
     [SerializeField] private float stopDist;
     [SerializeField] private int currentWaypoint;
     [SerializeField] private float rotateSpeed;
 
     [Header("Tracking")] 
-    [SerializeField] private float searchRange;
-    [SerializeField] private float chaseRange;
-    [SerializeField] private float attackRange;
+    [SerializeField] private float senseRange;
+    [SerializeField] private float heardRange;
+    [SerializeField] private float seenRange;
     [SerializeField] private float wanderRadius;
     //[SerializeField] private float loseSightCooldown = 3f;
 
     [Header("Emotions")] 
     [SerializeField] [Range(0, 10)]
-    private int hunger; 
-    [SerializeField] [Range(0, 10)]
     private int fear; 
     [SerializeField] [Range(0, 10)]
     private int viciousness; 
     [SerializeField] [Range(0, 10)]
-    private int goofiness; 
+    private float goofiness; 
     [SerializeField] [Range(0, 10)]
     private int airtime;
     [SerializeField] [Range(0, 10)]
     private int sociability; 
+    [SerializeField] [Range(0, 10)]
+    private int energy; 
     
     // Thought States
     private bool _plrSensed;
@@ -55,19 +55,22 @@ public class AnimalAI : MonoBehaviour
     private bool _plrAttacked;
     private bool _plrFed;
     
+    // Doing States
+    private bool _wandering;
+    
 
     private enum Behaviours
     {
-        Idle, // Idle a,b,c, bounce, sit, spin, eat
+        Idle, // Idle a,b,c, bounce, sit, spin
         Walk,
         Run,
-        Swim,
         Scared,
         Fly,
         Attack,
-        Roll
+        Roll,
+        Eat
     }
-    
+
     [SerializeField] private Behaviours behaviours;
 
     private void Start()
@@ -80,21 +83,19 @@ public class AnimalAI : MonoBehaviour
         ApplyGravity();
         GroundCheck();
         
-        SearchRange();
-        ChaseRange();
-        AttackRange();
-        
-        StateTransition();
+        _plrSensed = CheckRange(senseRange);
+        _plrHeard = CheckRange(heardRange);
+        _plrSeen = CheckRange(seenRange);
 
         switch (behaviours)
         {
             case Behaviours.Idle:
                 break;
             case Behaviours.Walk:
+                Wander(walkSpeed);
                 break;
             case Behaviours.Run:
-                break;
-            case Behaviours.Swim:
+                Wander(runSpeed);
                 break;
             case Behaviours.Scared:
                 break;
@@ -104,11 +105,64 @@ public class AnimalAI : MonoBehaviour
                 break;
             case Behaviours.Roll:
                 break;
+            case Behaviours.Eat:
+                break;
         }
     }
 
-    private void StateTransition()
+    private void CalcEmotions()
     {
+        // hunger, fear, viciousness, goofiness, airtime, sociability, energy
+        // energy > airtime > sociability > goofiness
+        // viciousness > fear
+        
+        if (!_plrSensed && !_plrHeard && !_plrSeen)
+        {
+            if (energy < 2)
+            {
+                TransitionToState(Behaviours.Eat);
+            }
+            else if (energy is 2 or 3)
+            {
+                TransitionToState(Behaviours.Idle);
+            }
+            else if (energy is > 3 and < 7)
+            {
+                TransitionToState(Behaviours.Walk);
+            }
+            else if (energy is 7 or 8)
+            {
+                TransitionToState(Behaviours.Run);
+            }
+            else if (energy > 8)
+            {
+                TransitionToState(Behaviours.Fly);
+            }
+        }
+    }
+
+    private void Wander(float moveSpeed)
+    {
+        if (!_wandering)
+        {
+            var randomDir = Random.insideUnitCircle.normalized * wanderRadius;
+            _targetPos = transform.position + new Vector3(randomDir.x, 0f, randomDir.y);
+            
+            _wandering = true;
+        }
+
+        transform.position = Vector3.MoveTowards(transform.position, _targetPos, moveSpeed * Time.deltaTime);
+        
+        var direction = _targetPos - transform.position;
+
+        if (direction == Vector3.zero)
+        {
+            var lookRotation = Quaternion.LookRotation(direction);
+            transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, rotateSpeed * Time.deltaTime);
+        }
+
+        if (!(Vector3.Distance(transform.position, _targetPos) < 0.1f)) return;
+        _wandering = false;
     }
 
     private void TransitionToState(Behaviours newBehaviour)
@@ -116,154 +170,10 @@ public class AnimalAI : MonoBehaviour
         behaviours = newBehaviour;
     }
 
-    private void SearchRange()
+    private bool CheckRange(float range)
     {
         var dist = Vector3.Distance(transform.position, _player.position);
-        _plrSensed = dist <= searchRange;
-    }
-
-    private void ChaseRange()
-    {
-        var dist = Vector3.Distance(transform.position, _player.position);
-        _plrHeard = dist <= chaseRange;
-    }
-
-    private void AttackRange()
-    {
-        var dist = Vector3.Distance(transform.position, _player.position);
-        _plrSeen = dist <= attackRange;
-    }
-
-    private void Searching()
-    {
-        /*
-        if (!_isSearching)
-        {
-            _searchPoint = RandomPoint();
-            _isSearching = true;
-        }
-    
-        var distanceToSearchPoint = Vector3.Distance(transform.position, _searchPoint);
-        
-        if (distanceToSearchPoint <= stopDist)
-        {
-            _isSearching = false;
-        }
-        else
-        {
-            transform.position = Vector3.Lerp(transform.position, _searchPoint, speed * Time.deltaTime);
-        }
-        */
-    }
-
-    private Vector3 RandomPoint()
-    {
-        var randomPoint = Vector3.zero;
-        var maxDistance = 30f;
-
-        foreach (var waypoint in waypoints)
-        {
-            var distance = Vector3.Distance(transform.position, waypoint.position);
-            if (distance > maxDistance)
-            {
-                maxDistance = distance;
-                randomPoint = waypoint.position;
-            }
-        }
-    
-        randomPoint += Random.insideUnitSphere * wanderRadius;
-        return randomPoint;
-    }
-
-    private void Patrolling()
-    {
-        var position = transform.position;
-        var dist = Vector3.Distance(position, waypoints[currentWaypoint].position);
-        position = Vector3.Lerp(position, waypoints[currentWaypoint].position, Time.deltaTime * speed);
-        transform.position = position;
-
-        if (dist <= stopDist)
-        {
-            currentWaypoint++;
-        }
-
-        if (currentWaypoint >= waypoints.Count)
-        {
-            currentWaypoint = 0;
-        }
-    }
-    
-    private void Chasing()
-    {
-        var direction = (_player.position - transform.position).normalized;
-        var lookRotation = Quaternion.LookRotation(direction);
-        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * rotateSpeed);
-        var targetPoint = _player.position - direction * (wanderRadius * 0.9f);
-        var distanceToTarget = Vector3.Distance(transform.position, targetPoint);
-        var interpolationFactor = Mathf.Clamp01(distanceToTarget / wanderRadius);
-        var adjustedSpeed = speed * interpolationFactor;
-        transform.position = Vector3.Lerp(transform.position, targetPoint, adjustedSpeed * Time.deltaTime);
-    }
-    
-    private Vector3 RandomPoint(Vector3 center, float radius, float angle)
-    {
-        var direction = Quaternion.Euler(0, angle, 0) * Vector3.forward;
-        var randomPoint = center + direction * radius;
-        return randomPoint;
-    }
-
-    private void Attacking()
-    {
-        /*
-        if (!_isAttackRange)
-        {
-            // If player is out of range, start the sight timer
-            if (SightTimer())
-            {
-                // Rotate towards the player
-                var direction = (_player.position - transform.position).normalized;
-                var rotation = Quaternion.LookRotation(direction);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotation, Time.deltaTime * rotateSpeed);
-            }
-            else
-            {
-                TransitionToState(States.Chase);
-            }
-        }
-        else
-        {
-            Fire();
-        }
-        */
-    }
-    
-    private void Fire()
-    {
-        /*
-        var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, Quaternion.identity, bulletParent);
-        var bullet = newBullet.GetComponent<Bullet>();
-
-        if (bullet != null)
-        {
-            bullet.GetTarget(_player);
-        }
-        */
-    }
-
-    private bool SightTimer()
-    {
-        /*
-            if (_loseSightTimer > 0f)
-            {
-                _loseSightTimer -= Time.deltaTime;
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-            */
-        return false;
+        return dist <= range;
     }
 
     private void ApplyGravity()
@@ -298,13 +208,13 @@ public class AnimalAI : MonoBehaviour
         var position = transform.position;
         
         Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(position, searchRange);
+        Gizmos.DrawWireSphere(position, senseRange);
 
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(position, chaseRange);
+        Gizmos.DrawWireSphere(position, heardRange);
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(position, attackRange);
+        Gizmos.DrawWireSphere(position, seenRange);
 
         Gizmos.color = Color.white;
         var newDist = new Vector3(position.x, position.y - groundCheckDist, position.z);
