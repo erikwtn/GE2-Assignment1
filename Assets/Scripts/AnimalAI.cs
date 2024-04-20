@@ -8,6 +8,7 @@ public class AnimalAI : MonoBehaviour
 {
     private Transform _player;
     private Vector3 _targetPos;
+    private Animator _animator;
     
     [SerializeField] private List<Transform> waypoints;
     
@@ -72,10 +73,16 @@ public class AnimalAI : MonoBehaviour
     }
 
     [SerializeField] private Behaviours behaviours;
+    
+    // Animations
+    private static readonly int IsWalking = Animator.StringToHash("isWalking");
+    private static readonly int IsRunning = Animator.StringToHash("isRunning");
+    private static readonly int IsEating = Animator.StringToHash("isEating");
 
     private void Start()
     {
         _player = GameObject.FindGameObjectWithTag("Player").transform;
+        _animator = GetComponent<Animator>();
     }
 
     private void FixedUpdate()
@@ -86,16 +93,27 @@ public class AnimalAI : MonoBehaviour
         _plrSensed = CheckRange(senseRange);
         _plrHeard = CheckRange(heardRange);
         _plrSeen = CheckRange(seenRange);
+        
+        CalcEmotions();
 
         switch (behaviours)
         {
             case Behaviours.Idle:
+                _animator.SetBool(IsWalking, false);
+                _animator.SetBool(IsRunning, false);
+                _animator.SetBool(IsEating, false);
                 break;
             case Behaviours.Walk:
                 Wander(walkSpeed);
+                _animator.SetBool(IsWalking, true);
+                _animator.SetBool(IsRunning, false);
+                _animator.SetBool(IsEating, false);
                 break;
             case Behaviours.Run:
                 Wander(runSpeed);
+                _animator.SetBool(IsWalking, false);
+                _animator.SetBool(IsRunning, true);
+                _animator.SetBool(IsEating, false);
                 break;
             case Behaviours.Scared:
                 break;
@@ -106,6 +124,9 @@ public class AnimalAI : MonoBehaviour
             case Behaviours.Roll:
                 break;
             case Behaviours.Eat:
+                _animator.SetBool(IsWalking, false);
+                _animator.SetBool(IsRunning, false);
+                _animator.SetBool(IsEating, true);
                 break;
         }
     }
@@ -147,7 +168,6 @@ public class AnimalAI : MonoBehaviour
         {
             var randomDir = Random.insideUnitCircle.normalized * wanderRadius;
             _targetPos = transform.position + new Vector3(randomDir.x, 0f, randomDir.y);
-            
             _wandering = true;
         }
 
@@ -155,7 +175,7 @@ public class AnimalAI : MonoBehaviour
         
         var direction = _targetPos - transform.position;
 
-        if (direction == Vector3.zero)
+        if (direction != Vector3.zero)
         {
             var lookRotation = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, rotateSpeed * Time.deltaTime);
