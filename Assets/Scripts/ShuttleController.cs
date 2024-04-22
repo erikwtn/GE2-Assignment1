@@ -15,12 +15,12 @@ public class SpaceshipController : MonoBehaviour
     [SerializeField] private float maxViewDist;
     
     [Header("Combat")]
-    [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private Transform bulletOrigin;
-    [SerializeField] private Transform bulletParent;
-    [SerializeField] private float fireCooldown = 0.5f;
+    //[SerializeField] private GameObject bulletPrefab;
+    //[SerializeField] private Transform bulletOrigin;
+    //[SerializeField] private Transform bulletParent;
+   // [SerializeField] private float fireCooldown = 0.5f;
 
-    private bool _canFire = true;
+    // private bool _canFire = true;
     
     [SerializeField] private Camera cam;
     private LayerMask _enemyLayer;
@@ -95,6 +95,7 @@ public class SpaceshipController : MonoBehaviour
         return enemyAI;
     }
     
+    /*
     private IEnumerator Fire()
     {
         _canFire = false;
@@ -111,6 +112,7 @@ public class SpaceshipController : MonoBehaviour
         yield return new WaitForSecondsRealtime(fireCooldown);
         _canFire = true;
     }
+    */
 
     private void OnDisable()
     {

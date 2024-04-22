@@ -23,6 +23,7 @@ public class AnimalAI : MonoBehaviour
     [SerializeField] private float walkSpeed;
     [SerializeField] private float runSpeed;
     [SerializeField] private float stopDist;
+    [SerializeField] private float flySpeed;
     [SerializeField] private int currentWaypoint;
     [SerializeField] private float rotateSpeed;
 
@@ -31,6 +32,8 @@ public class AnimalAI : MonoBehaviour
     [SerializeField] private float heardRange;
     [SerializeField] private float seenRange;
     [SerializeField] private float wanderRadius;
+    [SerializeField] private float flyRange;
+    [SerializeField] private Transform ground;
     //[SerializeField] private float loseSightCooldown = 3f;
 
     [Header("Emotions")] 
@@ -58,6 +61,7 @@ public class AnimalAI : MonoBehaviour
     
     // Doing States
     private bool _wandering;
+    private bool _flying;
     
 
     private enum Behaviours
@@ -78,6 +82,7 @@ public class AnimalAI : MonoBehaviour
     private static readonly int IsWalking = Animator.StringToHash("isWalking");
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
     private static readonly int IsEating = Animator.StringToHash("isEating");
+    private static readonly int IsFlying = Animator.StringToHash("isFlying");
 
     private void Start()
     {
@@ -102,22 +107,37 @@ public class AnimalAI : MonoBehaviour
                 _animator.SetBool(IsWalking, false);
                 _animator.SetBool(IsRunning, false);
                 _animator.SetBool(IsEating, false);
+                _animator.SetBool(IsFlying, false);
                 break;
             case Behaviours.Walk:
                 Wander(walkSpeed);
                 _animator.SetBool(IsWalking, true);
                 _animator.SetBool(IsRunning, false);
                 _animator.SetBool(IsEating, false);
+                _animator.SetBool(IsFlying, false);
                 break;
             case Behaviours.Run:
                 Wander(runSpeed);
                 _animator.SetBool(IsWalking, false);
                 _animator.SetBool(IsRunning, true);
                 _animator.SetBool(IsEating, false);
+                _animator.SetBool(IsFlying, false);
                 break;
             case Behaviours.Scared:
                 break;
             case Behaviours.Fly:
+                _animator.SetBool(IsFlying, true);
+                _animator.SetBool(IsWalking, false);
+                _animator.SetBool(IsRunning, false);
+                _animator.SetBool(IsEating, false);
+                if (!_flying)
+                {
+                    FlyToRandomPoint();
+                }
+                else
+                {
+                    FlyToTarget();
+                }
                 break;
             case Behaviours.Attack:
                 break;
@@ -127,6 +147,7 @@ public class AnimalAI : MonoBehaviour
                 _animator.SetBool(IsWalking, false);
                 _animator.SetBool(IsRunning, false);
                 _animator.SetBool(IsEating, true);
+                _animator.SetBool(IsFlying, false);
                 break;
         }
     }
@@ -183,6 +204,35 @@ public class AnimalAI : MonoBehaviour
 
         if (!(Vector3.Distance(transform.position, _targetPos) < 0.1f)) return;
         _wandering = false;
+    }
+    
+    private void FlyToRandomPoint()
+    {
+        var gY = ground.position.y + (ground.localScale.y) / 2f + 1f;
+        var y = Mathf.Clamp(Random.Range(gY, gY + 20f), gY, gY + 20f);
+        _targetPos = GetRandomPoint(transform.position, y, flyRange);
+        _flying = true;
+    }
+
+    private void FlyToTarget()
+    {
+        var dir = (_targetPos - transform.position).normalized;
+        var targetRot = Quaternion.LookRotation(dir);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotateSpeed);
+        transform.position = Vector3.MoveTowards(transform.position, _targetPos, flySpeed * Time.deltaTime);
+
+        if (Vector3.Distance(transform.position, _targetPos) < 0.1f)
+        {
+            _flying = false;
+        }
+    }
+
+    private Vector3 GetRandomPoint(Vector3 center, float y, float range)
+    {
+        var x = Random.Range(center.x - range, center.x + range);
+        var z = Random.Range(center.z - range, center.z + range);
+
+        return new Vector3(x, y, z);
     }
 
     private void TransitionToState(Behaviours newBehaviour)
