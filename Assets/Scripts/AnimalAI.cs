@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +13,7 @@ public class AnimalAI : MonoBehaviour
     private Animator _animator;
     
     [SerializeField] private List<Transform> waypoints;
+    private Coroutine _updateEn;
     
     [Header("Physics")]
     [SerializeField] private Vector3 gravityDir = Vector3.down;
@@ -34,21 +37,19 @@ public class AnimalAI : MonoBehaviour
     [SerializeField] private float wanderRadius;
     [SerializeField] private float flyRange;
     [SerializeField] private Transform ground;
-    //[SerializeField] private float loseSightCooldown = 3f;
-
+    [SerializeField] private Transform groundTop;
+    
     [Header("Emotions")] 
     [SerializeField] [Range(0, 10)]
     private int fear; 
-    [SerializeField] [Range(0, 10)]
-    private int viciousness; 
-    [SerializeField] [Range(0, 10)]
-    private float goofiness; 
-    [SerializeField] [Range(0, 10)]
-    private int airtime;
+    [SerializeField]
+    private bool isGoofy; 
     [SerializeField] [Range(0, 10)]
     private int sociability; 
     [SerializeField] [Range(0, 10)]
-    private int energy; 
+    private int energy;
+    private int _previousEnergy = 11;
+    [SerializeField] private float energyUpdateDel;
     
     // Thought States
     private bool _plrSensed;
@@ -62,6 +63,8 @@ public class AnimalAI : MonoBehaviour
     // Doing States
     private bool _wandering;
     private bool _flying;
+    private bool _isReset;
+    private bool _calc;
     
 
     private enum Behaviours
@@ -71,9 +74,8 @@ public class AnimalAI : MonoBehaviour
         Run,
         Scared,
         Fly,
-        Attack,
         Roll,
-        Eat
+        Eat,
     }
 
     [SerializeField] private Behaviours behaviours;
@@ -83,11 +85,13 @@ public class AnimalAI : MonoBehaviour
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
     private static readonly int IsEating = Animator.StringToHash("isEating");
     private static readonly int IsFlying = Animator.StringToHash("isFlying");
+    private static readonly int IsRolling = Animator.StringToHash("isRolling");
 
     private void Start()
     {
         _player = GameObject.FindGameObjectWithTag("Player").transform;
         _animator = GetComponent<Animator>();
+        _updateEn = StartCoroutine(UpdateEnergy());
     }
 
     private void FixedUpdate()
@@ -98,38 +102,34 @@ public class AnimalAI : MonoBehaviour
         _plrSensed = CheckRange(senseRange);
         _plrHeard = CheckRange(heardRange);
         _plrSeen = CheckRange(seenRange);
+
+        // CalcEmotions();
+
+        if (_previousEnergy != energy)
+        {
+            _calc = true;
+            _previousEnergy = energy;
+        }
         
         CalcEmotions();
 
         switch (behaviours)
         {
             case Behaviours.Idle:
-                _animator.SetBool(IsWalking, false);
-                _animator.SetBool(IsRunning, false);
-                _animator.SetBool(IsEating, false);
-                _animator.SetBool(IsFlying, false);
+                SwitchAnimations(null);
                 break;
             case Behaviours.Walk:
                 Wander(walkSpeed);
-                _animator.SetBool(IsWalking, true);
-                _animator.SetBool(IsRunning, false);
-                _animator.SetBool(IsEating, false);
-                _animator.SetBool(IsFlying, false);
+                SwitchAnimations(IsWalking);
                 break;
             case Behaviours.Run:
                 Wander(runSpeed);
-                _animator.SetBool(IsWalking, false);
-                _animator.SetBool(IsRunning, true);
-                _animator.SetBool(IsEating, false);
-                _animator.SetBool(IsFlying, false);
+                SwitchAnimations(IsRunning);
                 break;
             case Behaviours.Scared:
                 break;
             case Behaviours.Fly:
-                _animator.SetBool(IsFlying, true);
-                _animator.SetBool(IsWalking, false);
-                _animator.SetBool(IsRunning, false);
-                _animator.SetBool(IsEating, false);
+                SwitchAnimations(IsFlying);
                 if (!_flying)
                 {
                     FlyToRandomPoint();
@@ -139,16 +139,27 @@ public class AnimalAI : MonoBehaviour
                     FlyToTarget();
                 }
                 break;
-            case Behaviours.Attack:
-                break;
             case Behaviours.Roll:
+                SwitchAnimations(IsRolling);
+                Wander(walkSpeed);
                 break;
             case Behaviours.Eat:
-                _animator.SetBool(IsWalking, false);
-                _animator.SetBool(IsRunning, false);
-                _animator.SetBool(IsEating, true);
-                _animator.SetBool(IsFlying, false);
+                SwitchAnimations(IsEating);
                 break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void SwitchAnimations(int? anim)
+    {
+        var parameters = _animator.parameters;
+
+        foreach (var parameter in parameters)
+        {
+            if (parameter.type != AnimatorControllerParameterType.Bool) return;
+            var hash = parameter.nameHash;
+            _animator.SetBool(hash, hash == anim);
         }
     }
 
@@ -158,28 +169,78 @@ public class AnimalAI : MonoBehaviour
         // energy > airtime > sociability > goofiness
         // viciousness > fear
         
+        /*
+                   while eating, energy increases fast
+                   While idle energy increases slow
+                   while walking energy decreases 
+                   while running energy decreases faster
+                   while flying energy decreases faster
+                   energy will randomly increase at any stage
+                  */
         if (!_plrSensed && !_plrHeard && !_plrSeen)
         {
-            if (energy < 2)
+            if (!_calc) return;
+            switch (energy)
             {
-                TransitionToState(Behaviours.Eat);
+                case < 2:
+                    TransitionToState(Behaviours.Eat);
+                    _calc = false;
+                    break;
+                case 2 or 3:
+                    TransitionToState(Behaviours.Idle);
+                    _calc = false;
+                    break;
+                case > 3 and < 7:
+                    TransitionToState(Behaviours.Walk);
+                    _calc = false;
+                    break;
+                case 7 or 8:
+                    TransitionToState(isGoofy ? Behaviours.Roll : Behaviours.Run);
+                    _calc = false;
+                    break;
+                case > 8:
+                    TransitionToState(Behaviours.Fly);
+                    _calc = false;
+                    break;
             }
-            else if (energy is 2 or 3)
-            {
-                TransitionToState(Behaviours.Idle);
-            }
-            else if (energy is > 3 and < 7)
-            {
-                TransitionToState(Behaviours.Walk);
-            }
-            else if (energy is 7 or 8)
-            {
-                TransitionToState(Behaviours.Run);
-            }
-            else if (energy > 8)
-            {
-                TransitionToState(Behaviours.Fly);
-            }
+        }
+    }
+
+    private void ManageEnergy()
+    {
+        if (Random.Range(0, 100) < 30)
+        {
+            energy += Random.Range(4, 8);
+        }
+        
+        switch (behaviours)
+        {
+            case Behaviours.Eat:
+                energy += 1;
+                break;
+            case Behaviours.Idle:
+                energy += 1;
+                break;
+            case Behaviours.Walk:
+                energy -= 1;
+                break;
+            case Behaviours.Run:
+                energy -= 1;
+                break;
+            case Behaviours.Fly:
+                energy -= 1;
+                break;
+        }
+        
+        energy = Mathf.Clamp(energy, 0, 10);
+    }
+    
+    private IEnumerator UpdateEnergy()
+    {
+        while (true)
+        {
+            yield return new WaitForSecondsRealtime(energyUpdateDel);
+            ManageEnergy();
         }
     }
 
@@ -237,6 +298,20 @@ public class AnimalAI : MonoBehaviour
 
     private void TransitionToState(Behaviours newBehaviour)
     {
+        if (behaviours == Behaviours.Fly)
+        {
+            Returning(newBehaviour);
+        }
+        else
+        {
+            behaviours = newBehaviour;
+        }
+    }
+
+    private void Returning(Behaviours newBehaviour)
+    {
+        _targetPos = new Vector3(transform.position.x, groundTop.position.y, transform.position.z);
+        transform.rotation = Quaternion.identity;
         behaviours = newBehaviour;
     }
 
@@ -289,5 +364,11 @@ public class AnimalAI : MonoBehaviour
         Gizmos.color = Color.white;
         var newDist = new Vector3(position.x, position.y - groundCheckDist, position.z);
         Gizmos.DrawLine(position, newDist);
+    }
+    
+    private void OnDestroy()
+    {
+        if (UpdateEnergy() == null) return;
+        StopCoroutine(UpdateEnergy());
     }
 }
