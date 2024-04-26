@@ -86,6 +86,7 @@ public class AnimalAI : MonoBehaviour
     private static readonly int IsEating = Animator.StringToHash("isEating");
     private static readonly int IsFlying = Animator.StringToHash("isFlying");
     private static readonly int IsRolling = Animator.StringToHash("isRolling");
+    private static readonly int IsBouncing = Animator.StringToHash("isBouncing");
 
     private void Start()
     {
@@ -116,7 +117,14 @@ public class AnimalAI : MonoBehaviour
         switch (behaviours)
         {
             case Behaviours.Idle:
-                SwitchAnimations(null);
+                if (isGoofy)
+                {
+                    SwitchAnimations(IsBouncing);
+                }
+                else
+                {
+                    SwitchAnimations(null);
+                }
                 break;
             case Behaviours.Walk:
                 Wander(walkSpeed);
@@ -165,18 +173,6 @@ public class AnimalAI : MonoBehaviour
 
     private void CalcEmotions()
     {
-        // hunger, fear, viciousness, goofiness, airtime, sociability, energy
-        // energy > airtime > sociability > goofiness
-        // viciousness > fear
-        
-        /*
-                   while eating, energy increases fast
-                   While idle energy increases slow
-                   while walking energy decreases 
-                   while running energy decreases faster
-                   while flying energy decreases faster
-                   energy will randomly increase at any stage
-                  */
         if (!_plrSensed && !_plrHeard && !_plrSeen)
         {
             if (!_calc) return;
@@ -203,6 +199,16 @@ public class AnimalAI : MonoBehaviour
                     _calc = false;
                     break;
             }
+        }
+        else if (_plrSensed && !_plrHeard && !_plrSeen)
+        {
+        }
+        else if (_plrHeard && !_plrSeen)
+        {
+        }
+        else if (_plrSeen)
+        {
+            
         }
     }
 
