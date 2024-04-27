@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
@@ -13,7 +14,9 @@ public class AnimalAI : MonoBehaviour
     private Animator _animator;
     
     [SerializeField] private List<Transform> waypoints;
+    [SerializeField] private List<Transform> otherBirds;
     private Coroutine _updateEn;
+    private AudioSource _audioSource;
     
     [Header("Physics")]
     [SerializeField] private Vector3 gravityDir = Vector3.down;
@@ -27,12 +30,9 @@ public class AnimalAI : MonoBehaviour
     [SerializeField] private float runSpeed;
     [SerializeField] private float stopDist;
     [SerializeField] private float flySpeed;
-    [SerializeField] private int currentWaypoint;
     [SerializeField] private float rotateSpeed;
 
     [Header("Tracking")] 
-    [SerializeField] private float senseRange;
-    [SerializeField] private float heardRange;
     [SerializeField] private float seenRange;
     [SerializeField] private float wanderRadius;
     [SerializeField] private float flyRange;
@@ -52,13 +52,8 @@ public class AnimalAI : MonoBehaviour
     [SerializeField] private float energyUpdateDel;
     
     // Thought States
-    private bool _plrSensed;
-    private bool _plrHeard;
     private bool _plrSeen;
-    
-    // Player Interactions
-    private bool _plrAttacked;
-    private bool _plrFed;
+    private bool _otherBirdSeen;
     
     // Doing States
     private bool _wandering;
@@ -66,6 +61,9 @@ public class AnimalAI : MonoBehaviour
     private bool _isReset;
     private bool _calc;
     
+    // Timing
+    [SerializeField] private float squawkDur;
+    private bool _isTimer = false;
 
     private enum Behaviours
     {
@@ -76,6 +74,9 @@ public class AnimalAI : MonoBehaviour
         Fly,
         Roll,
         Eat,
+        Squawk,
+        RunAway,
+        Socialise
     }
 
     [SerializeField] private Behaviours behaviours;
@@ -87,12 +88,14 @@ public class AnimalAI : MonoBehaviour
     private static readonly int IsFlying = Animator.StringToHash("isFlying");
     private static readonly int IsRolling = Animator.StringToHash("isRolling");
     private static readonly int IsBouncing = Animator.StringToHash("isBouncing");
+    private static readonly int IsScared = Animator.StringToHash("isScared");
 
     private void Start()
     {
         _player = GameObject.FindGameObjectWithTag("Player").transform;
         _animator = GetComponent<Animator>();
         _updateEn = StartCoroutine(UpdateEnergy());
+        _audioSource = GetComponent<AudioSource>();
     }
 
     private void FixedUpdate()
@@ -100,11 +103,8 @@ public class AnimalAI : MonoBehaviour
         ApplyGravity();
         GroundCheck();
         
-        _plrSensed = CheckRange(senseRange);
-        _plrHeard = CheckRange(heardRange);
-        _plrSeen = CheckRange(seenRange);
-
-        // CalcEmotions();
+        _plrSeen = CheckRange(seenRange, true);
+        _otherBirdSeen = CheckRange(seenRange, false);
 
         if (_previousEnergy != energy)
         {
@@ -135,6 +135,7 @@ public class AnimalAI : MonoBehaviour
                 SwitchAnimations(IsRunning);
                 break;
             case Behaviours.Scared:
+                SwitchAnimations(IsScared);
                 break;
             case Behaviours.Fly:
                 SwitchAnimations(IsFlying);
@@ -153,6 +154,18 @@ public class AnimalAI : MonoBehaviour
                 break;
             case Behaviours.Eat:
                 SwitchAnimations(IsEating);
+                break;
+            case Behaviours.Squawk:
+                SwitchAnimations(IsScared);
+                Squawking();
+                break;
+            case Behaviours.RunAway:
+                Flee();
+                SwitchAnimations(IsRunning);
+                break;
+            case Behaviours.Socialise:
+                Squawking();
+                SwitchAnimations(IsBouncing);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -173,48 +186,59 @@ public class AnimalAI : MonoBehaviour
 
     private void CalcEmotions()
     {
-        if (!_plrSensed && !_plrHeard && !_plrSeen)
+        if (!_calc) return;
+        if (!_plrSeen)
         {
-            if (!_calc) return;
-            switch (energy)
+            if (sociability < 5 || !_otherBirdSeen)
             {
-                case < 2:
-                    TransitionToState(Behaviours.Eat);
-                    _calc = false;
-                    break;
-                case 2 or 3:
-                    TransitionToState(Behaviours.Idle);
-                    _calc = false;
-                    break;
-                case > 3 and < 7:
-                    TransitionToState(Behaviours.Walk);
-                    _calc = false;
-                    break;
-                case 7 or 8:
-                    TransitionToState(isGoofy ? Behaviours.Roll : Behaviours.Run);
-                    _calc = false;
-                    break;
-                case > 8:
-                    TransitionToState(Behaviours.Fly);
-                    _calc = false;
-                    break;
+                switch (energy)
+                {
+                    case < 2:
+                        TransitionToState(Behaviours.Eat);
+                        _calc = false;
+                        break;
+                    case 2 or 3:
+                        TransitionToState(Behaviours.Idle);
+                        _calc = false;
+                        break;
+                    case > 3 and < 7:
+                        TransitionToState(Behaviours.Walk);
+                        _calc = false;
+                        break;
+                    case 7 or 8:
+                        TransitionToState(isGoofy ? Behaviours.Roll : Behaviours.Run);
+                        _calc = false;
+                        break;
+                    case > 8:
+                        TransitionToState(Behaviours.Fly);
+                        _calc = false;
+                        break;
+                }
             }
-        }
-        else if (_plrSensed && !_plrHeard && !_plrSeen)
-        {
-        }
-        else if (_plrHeard && !_plrSeen)
-        {
+            else if (sociability >= 5 && _otherBirdSeen)
+            { 
+                TransitionToState(Behaviours.Socialise);
+                _calc = false;
+            }
         }
         else if (_plrSeen)
         {
-            
+            if (fear > 7)
+            {
+                TransitionToState(energy > 5 ? Behaviours.RunAway : Behaviours.Squawk);
+                _calc = false;
+            }
+            else
+            {
+                TransitionToState(Behaviours.Scared);
+                _calc = false;
+            }
         }
     }
 
     private void ManageEnergy()
     {
-        if (Random.Range(0, 100) < 30)
+        if (Random.Range(0, 100) < 30 && behaviours != Behaviours.Fly)
         {
             energy += Random.Range(4, 8);
         }
@@ -223,19 +247,51 @@ public class AnimalAI : MonoBehaviour
         {
             case Behaviours.Eat:
                 energy += 1;
+                fear -= 1;
+                sociability -= 1;
                 break;
             case Behaviours.Idle:
                 energy += 1;
+                fear -= 1;
+                sociability += 1;
                 break;
             case Behaviours.Walk:
                 energy -= 1;
+                fear -= 1;
+                sociability += 1;
                 break;
             case Behaviours.Run:
                 energy -= 1;
+                fear -= 1;
                 break;
             case Behaviours.Fly:
                 energy -= 1;
+                fear -= 1;
+                sociability -= 1;
                 break;
+            case Behaviours.Scared:
+                energy += 1;
+                fear += 1;
+                sociability += 1;
+                break;
+            case Behaviours.Roll:
+                energy -= 1;
+                sociability += 1;
+                break;
+            case Behaviours.RunAway:
+                fear -= 1;
+                energy -= 1;
+                break;
+            case Behaviours.Squawk:
+                fear += 1;
+                energy += 1;
+                break;
+            case Behaviours.Socialise:
+                fear -= 1;
+                sociability -= 2;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
         
         energy = Mathf.Clamp(energy, 0, 10);
@@ -248,6 +304,49 @@ public class AnimalAI : MonoBehaviour
             yield return new WaitForSecondsRealtime(energyUpdateDel);
             ManageEnergy();
         }
+    }
+
+    private void Squawking()
+    {
+        if (!_isTimer)
+        {
+            StartCoroutine(SquawkTimer());
+        }
+    }
+
+    private IEnumerator SquawkTimer()
+    {
+        _isTimer = true;
+
+        var timer = squawkDur;
+
+        while (timer > 0f)
+        {
+            yield return new WaitForSecondsRealtime(1f);
+            timer -= 1f;
+        }
+
+        if (!_audioSource.isPlaying)
+        {
+            _audioSource.Play();
+        }
+
+        _isTimer = false;
+    }
+    
+    private void Flee()
+    {
+        var dir = transform.position - _player.position;
+        dir.y = 0;
+        dir.Normalize();
+        var targetPosition = transform.position + dir * (runSpeed * Time.deltaTime);
+
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, runSpeed * Time.deltaTime);
+        
+        var targetRotation = Quaternion.LookRotation(dir);
+        targetRotation.x = 0;
+        targetRotation.z = 0;
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotateSpeed * Time.deltaTime);
     }
 
     private void Wander(float moveSpeed)
@@ -304,7 +403,7 @@ public class AnimalAI : MonoBehaviour
 
     private void TransitionToState(Behaviours newBehaviour)
     {
-        if (behaviours == Behaviours.Fly)
+        if (behaviours == Behaviours.Fly || Math.Abs(transform.position.y - groundTop.position.y) > 0.1f)
         {
             Returning(newBehaviour);
         }
@@ -321,9 +420,10 @@ public class AnimalAI : MonoBehaviour
         behaviours = newBehaviour;
     }
 
-    private bool CheckRange(float range)
+    private bool CheckRange(float range, bool isPlayer)
     {
-        var dist = Vector3.Distance(transform.position, _player.position);
+        var dist = 0f;
+        dist = isPlayer ? Vector3.Distance(transform.position, _player.position) : otherBirds.Select(b => Vector3.Distance(transform.position, b.position)).Prepend(dist).Min();
         return dist <= range;
     }
 
@@ -358,12 +458,6 @@ public class AnimalAI : MonoBehaviour
     {
         var position = transform.position;
         
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(position, senseRange);
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(position, heardRange);
-
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(position, seenRange);
 

@@ -73,6 +73,7 @@ public class SpaceshipController : MonoBehaviour
         */
     }
 
+    /*
     private EnemyAI FindNearestEnemy()
     {
         _enemyLayer = LayerMask.GetMask("Enemy");
@@ -94,6 +95,7 @@ public class SpaceshipController : MonoBehaviour
 
         return enemyAI;
     }
+    */
     
     /*
     private IEnumerator Fire()
