@@ -64,6 +64,11 @@ public class SpaceshipController : MonoBehaviour
         
         var moveInput = new Vector3(horizontalInput, upDownInput - gripInput, verticalInput);
         transform.Translate(moveInput * (speed * Time.deltaTime));
+        var transformRotation = transform.rotation;
+        transformRotation.x = 0;
+        transformRotation.z = 0;
+
+        transform.rotation = transformRotation;
 
         /*
         if (fireInput > 0 && _canFire)

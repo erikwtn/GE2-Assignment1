@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 public class AnimalAI : MonoBehaviour
@@ -50,6 +51,12 @@ public class AnimalAI : MonoBehaviour
     private int energy;
     private int _previousEnergy = 11;
     [SerializeField] private float energyUpdateDel;
+
+    [Header("Parameters")] 
+    [SerializeField] private Toggle goofyToggle;
+    [SerializeField] private Slider socialSlider;
+    [SerializeField] private Slider energySlider;
+    [SerializeField] private Slider fearSlider;
     
     // Thought States
     private bool _plrSeen;
@@ -96,12 +103,14 @@ public class AnimalAI : MonoBehaviour
         _animator = GetComponent<Animator>();
         _updateEn = StartCoroutine(UpdateEnergy());
         _audioSource = GetComponent<AudioSource>();
+        UpdateUI();
     }
 
     private void FixedUpdate()
     {
         ApplyGravity();
         GroundCheck();
+        UpdateUI();
         
         _plrSeen = CheckRange(seenRange, true);
         _otherBirdSeen = CheckRange(seenRange, false);
@@ -442,6 +451,68 @@ public class AnimalAI : MonoBehaviour
         {
             _isGrounded = hit.collider.CompareTag($"Ground") && col;
         }
+    }
+
+    private void UpdateUI()
+    {
+        goofyToggle.isOn = isGoofy;
+        socialSlider.value = sociability;
+        energySlider.value = energy;
+        fearSlider.value = fear;
+    }
+
+    public void UpdateParams(GameObject param)
+    {
+        if (param.name == "Toggle")
+        {
+            isGoofy = param.GetComponent<Toggle>().isOn;
+        }
+        else
+        {
+            var s = param.GetComponent<Slider>();
+
+            if (s == energySlider)
+            {
+                energy = (int)energySlider.value;
+            }
+            else if (s == fearSlider)
+            {
+                fear = (int)fearSlider.value;
+            }
+            else if (s == socialSlider)
+            {
+                sociability = (int)socialSlider.value;
+            }
+            else if (!string.IsNullOrEmpty(s.gameObject.name = "Slider"))
+            {
+                seenRange = s.value;
+            }
+        }
+        /*
+        if (param == 0) // goofy
+        {
+            var toggle = go.GetComponentInChildren<Toggle>();
+            isGoofy = toggle.isOn;
+            return;
+        }
+
+        var slider = go.GetComponentInChildren<Slider>();
+        switch (param)
+        {
+            case 1: // Sociability
+                sociability = (int)slider.value;
+                break;
+            case 2: // Energy
+                energy = (int)slider.value;
+                break;
+            case 3: // Fear
+                fear = (int)slider.value;
+                break;
+            case 5: // Range
+                seenRange = (int)slider.value;
+                break;
+        }
+        */
     }
 
     private void OnDrawGizmos()
