@@ -15,10 +15,19 @@ The personality traits can be altered by the player.
 [![YouTube]([http://img.youtube.com/vi/J2kHSSFA4NU/0.jpg](https://i9.ytimg.com/vi_webp/U1-_z3jo3jQ/mq1.webp?sqp=CPTPubEG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGGUgXyg1MA8=&rs=AOn4CLB_QEwugGgDFMDizWStGmGeCQfN6A))]([https://www.youtube.com/watch?v=J2kHSSFA4NU](https://youtu.be/U1-_z3jo3jQ))
 
 # Instructions
-Made for Meta Quest 2. Movement and rotation are controlled via the thumbsticks. Press X or A to open parameters GUI. Press fire button to go up, grip button to go down.
+Made for Meta Quest 2. Movement and rotation are controlled via the thumbsticks. Press X or A to open the parameters GUI. Press the fire button to go up and the grip button to go down.
 
 # How it works
 The birds are controlled by a custom AI script that manages their movement and animations which is based on a number of variables (personality traits mentioned previously). 
+
+# Comparison with Real Life
+The birds are a bit more energetic and do more than real birds; however, the behaviours are based on real ones (eating, resting, flying around); I took some creative liberties with the goofiness to add some personality.
+
+# Images from Primary Research
+These images are from one of my visits to Dublin Zoo, observing birds.
+![Duck](https://i.imgur.com/9WYF8KZ.jpeg)
+![Robin](https://i.imgur.com/9GnwgtO.jpeg)
+
 
 # List of classes/assets
 
@@ -36,4 +45,4 @@ The birds are controlled by a custom AI script that manages their movement and a
 | Water Texture | From [Stylized Water](https://assetstore.unity.com/packages/p/stylize-water-texture-153577) |
 
 This was a solo project so all contributions are from Erik Watchorn with the help of assets from the asset store. I am most proud of the AnimalAI script as it was a first for me to do an AI without the help of the built in NavMeshAgent in Unity.
-I learned a lot about state machines and movement as I did not use rigidbodies or charactercontrollers.
+I learned a lot about state machines and movement as I did not use rigid bodies or character controllers.
