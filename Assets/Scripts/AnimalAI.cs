@@ -14,7 +14,6 @@ public class AnimalAI : MonoBehaviour
     private Vector3 _targetPos;
     private Animator _animator;
     
-    [SerializeField] private List<Transform> waypoints;
     [SerializeField] private List<Transform> otherBirds;
     private Coroutine _updateEn;
     private AudioSource _audioSource;
@@ -71,10 +70,11 @@ public class AnimalAI : MonoBehaviour
     // Timing
     [SerializeField] private float squawkDur;
     private bool _isTimer = false;
+    private bool _isUpdating;
 
     private enum Behaviours
     {
-        Idle, // Idle a,b,c, bounce, sit, spin
+        Idle,
         Walk,
         Run,
         Scared,
@@ -110,8 +110,12 @@ public class AnimalAI : MonoBehaviour
     {
         ApplyGravity();
         GroundCheck();
-        UpdateUI();
-        
+
+        if (!_isUpdating)
+        {
+            UpdateUI();
+        }
+
         _plrSeen = CheckRange(seenRange, true);
         _otherBirdSeen = CheckRange(seenRange, false);
 
@@ -432,7 +436,22 @@ public class AnimalAI : MonoBehaviour
     private bool CheckRange(float range, bool isPlayer)
     {
         var dist = 0f;
-        dist = isPlayer ? Vector3.Distance(transform.position, _player.position) : otherBirds.Select(b => Vector3.Distance(transform.position, b.position)).Prepend(dist).Min();
+        if (isPlayer)
+        {
+            dist = Vector3.Distance(transform.position, _player.position);
+        }
+        else
+        {
+            foreach (var bird in otherBirds)
+            {
+                var distance = Vector3.Distance(transform.position, bird.position);
+                if (distance < dist || dist == 0f)
+                {
+                    dist = distance;
+                }
+            }
+        }
+        
         return dist <= range;
     }
 
@@ -463,9 +482,11 @@ public class AnimalAI : MonoBehaviour
 
     public void UpdateParams(GameObject param)
     {
+        _isUpdating = true;
         if (param.name == "Toggle")
         {
             isGoofy = param.GetComponent<Toggle>().isOn;
+            _isUpdating = false;
         }
         else
         {
@@ -474,58 +495,27 @@ public class AnimalAI : MonoBehaviour
             if (s == energySlider)
             {
                 energy = (int)energySlider.value;
+                _isUpdating = false;
             }
             else if (s == fearSlider)
             {
                 fear = (int)fearSlider.value;
+                _isUpdating = false;
             }
             else if (s == socialSlider)
             {
                 sociability = (int)socialSlider.value;
+                _isUpdating = false;
             }
             else if (!string.IsNullOrEmpty(s.gameObject.name = "Slider"))
             {
                 seenRange = s.value;
+                _isUpdating = false;
             }
         }
-        /*
-        if (param == 0) // goofy
-        {
-            var toggle = go.GetComponentInChildren<Toggle>();
-            isGoofy = toggle.isOn;
-            return;
-        }
-
-        var slider = go.GetComponentInChildren<Slider>();
-        switch (param)
-        {
-            case 1: // Sociability
-                sociability = (int)slider.value;
-                break;
-            case 2: // Energy
-                energy = (int)slider.value;
-                break;
-            case 3: // Fear
-                fear = (int)slider.value;
-                break;
-            case 5: // Range
-                seenRange = (int)slider.value;
-                break;
-        }
-        */
     }
 
     private void OnDrawGizmos()
-    {
-        if (waypoints.Count <= 0) return;
-
-        foreach (var t in waypoints.Where(t => t != null))
-        {
-            Gizmos.DrawWireSphere(t.position, stopDist);
-        }
-    }
-
-    private void OnDrawGizmosSelected()
     {
         var position = transform.position;
         

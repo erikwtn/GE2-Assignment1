@@ -13,15 +13,17 @@ public class SpaceshipController : MonoBehaviour
     [SerializeField] private float downAndUpSpeed;
     [SerializeField] private float speed;
     [SerializeField] private float maxViewDist;
-    
+
     [Header("Combat")]
     //[SerializeField] private GameObject bulletPrefab;
     //[SerializeField] private Transform bulletOrigin;
     //[SerializeField] private Transform bulletParent;
-   // [SerializeField] private float fireCooldown = 0.5f;
+    // [SerializeField] private float fireCooldown = 0.5f;
 
     // private bool _canFire = true;
-    
+
+    [SerializeField]
+    private GameObject paramsGUI;
     [SerializeField] private Camera cam;
     private LayerMask _enemyLayer;
 
@@ -30,7 +32,11 @@ public class SpaceshipController : MonoBehaviour
     private InputAction _verticalAction;
     private InputAction _upDownAction;
     private InputAction _gripAction;
+    private InputAction _openAction;
     //private InputAction _fireAction;
+
+    private bool _uiOpen;
+    private bool _debounce;
 
     private void Start()
     {
@@ -39,6 +45,7 @@ public class SpaceshipController : MonoBehaviour
         _verticalAction = new InputAction(binding: "<XRController>/primary2DAxis/y");
         _upDownAction = new InputAction(binding: "<XRController>/triggerButton");
         _gripAction = new InputAction(binding: "<XRController>/gripButton");
+        _openAction = new InputAction(binding: "<XRController>/primaryButton");
         //_fireAction = new InputAction(binding: "<XRController>/triggerButton");
         
         _rollAction.Enable();
@@ -46,6 +53,7 @@ public class SpaceshipController : MonoBehaviour
         _verticalAction.Enable();
         _upDownAction.Enable();
         _gripAction.Enable();
+        _openAction.Enable();
         //_fireAction.Enable();
     }
 
@@ -56,26 +64,26 @@ public class SpaceshipController : MonoBehaviour
         var verticalInput = _verticalAction.ReadValue<float>();
         var upDownInput = _upDownAction.ReadValue<float>();
         var gripInput = _gripAction.ReadValue<float>();
+        var openInput = _openAction.ReadValue<float>();
         //var fireInput = _fireAction.ReadValue<float>();
-        
-        transform.Rotate(Vector3.back * (rotateSpeed * rollInput * Time.deltaTime));
-        transform.Rotate(Vector3.up * (turnSpeed * horizontalInput * Time.deltaTime));
-        transform.Rotate(Vector3.right * (downAndUpSpeed * verticalInput * Time.deltaTime));
-        
-        var moveInput = new Vector3(horizontalInput, upDownInput - gripInput, verticalInput);
-        transform.Translate(moveInput * (speed * Time.deltaTime));
-        var transformRotation = transform.rotation;
-        transformRotation.x = 0;
-        transformRotation.z = 0;
 
-        transform.rotation = transformRotation;
-
-        /*
-        if (fireInput > 0 && _canFire)
+        if (!_uiOpen)
         {
-            StartCoroutine(Fire());
+            transform.Rotate(Vector3.up * (rotateSpeed * horizontalInput * Time.deltaTime));
+            
+            var moveInput = new Vector3(0f, upDownInput - gripInput, verticalInput);
+            transform.Translate(moveInput * (speed * Time.deltaTime), Space.Self);
+            
+            var rotation = transform.rotation;
+            rotation.x = 0f;
+            rotation.z = 0f;
+            transform.rotation = rotation;
         }
-        */
+
+        if (!(openInput > 0) || _debounce) return;
+        StartCoroutine(Fire());
+        _uiOpen = !_uiOpen;
+        paramsGUI.SetActive(_uiOpen);
     }
 
     /*
@@ -102,24 +110,14 @@ public class SpaceshipController : MonoBehaviour
     }
     */
     
-    /*
+    
     private IEnumerator Fire()
     {
-        _canFire = false;
-        
-        var target = FindNearestEnemy();
-        var newBullet = Instantiate(bulletPrefab, bulletOrigin.position, transform.rotation, bulletParent);
-        var bullet = newBullet.GetComponent<Bullet>();
-        
-        if (bullet != null)
-        {
-            bullet.GetTarget(target != null ? target.transform : null);
-        }
-
-        yield return new WaitForSecondsRealtime(fireCooldown);
-        _canFire = true;
+        _debounce = true;
+        yield return new WaitForSecondsRealtime(1f);
+        _debounce = false;
     }
-    */
+    
 
     private void OnDisable()
     {
@@ -128,6 +126,7 @@ public class SpaceshipController : MonoBehaviour
         _verticalAction.Disable();
         _upDownAction.Disable();
         _gripAction.Disable();
+        _openAction.Disable();
         //_fireAction.Disable();
     }
     
