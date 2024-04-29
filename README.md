@@ -12,7 +12,7 @@ The personality traits can be altered by the player.
 
 ## Video:
 
-[![YouTube]([http://img.youtube.com/vi/J2kHSSFA4NU/0.jpg](https://i9.ytimg.com/vi_webp/U1-_z3jo3jQ/mq1.webp?sqp=CPTPubEG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGGUgXyg1MA8=&rs=AOn4CLB_QEwugGgDFMDizWStGmGeCQfN6A))]([https://www.youtube.com/watch?v=J2kHSSFA4NU](https://youtu.be/U1-_z3jo3jQ))
+[![YouTube]([http://img.youtube.com/vi/J2kHSSFA4NU/0.jpg](https://youtu.be/U1-_z3jo3jQ?si=Vmly48ZK1dniNK7f))
 
 # Instructions
 Made for Meta Quest 2. Movement and rotation are controlled via the thumbsticks. Press X or A to open the parameters GUI. Press the fire button to go up and the grip button to go down.
